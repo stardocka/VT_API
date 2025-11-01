@@ -1,15 +1,16 @@
-from flask import Flask
+from flask import Flask, request, jsonify
 import json, re
 
 app = Flask(__name__)
 
-@app.route('/')
+@app.route("/analyze", methods=["POST"])
 
 def GetUrlToScan():
     # Get the input of the user
-    UrlToCheck = str(input("Enter the URL to check:"))
+    DataReceived = request.get_json()
+    UrlToCheck = DataReceived.get("url")
 
-    # Check the user's input with a regex
+    # Check the user's input with a REGEX
     RegexPatternHttps = "https?:\/\/[a-zA-Z0-9\-\.]+[a-zA-Z]{2,6}"
     RegexPatternHttp = "https?:\/\/[a-zA-Z0-9\-\.]+[a-zA-Z]{2,6}"
 
@@ -17,10 +18,10 @@ def GetUrlToScan():
     if re.match(RegexPatternHttps, UrlToCheck) or re.match(RegexPatternHttp, UrlToCheck):
         with open("ToCheck.json", 'w', encoding='utf-8') as f:
             json.dump({"url": UrlToCheck}, f, ensure_ascii=False, indent=4)
+        return jsonify({"url": UrlToCheck, "status": "valid"})
     
     else:
-        print("Unrecognized URL")
+        return jsonify({"error": "URL invalide"}), 400
 
-
-
-GetUrlToScan()
+if __name__ == "__main__":
+    app.run(debug=True)
