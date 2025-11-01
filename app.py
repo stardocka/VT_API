@@ -1,3 +1,12 @@
+"""
+Copyright 2025 URL Analyzer Project
+
+This file is part of URL Analyzer project
+Author : Antoine Puteanus-Mautino
+
+Last update : November 01, 2025
+"""
+
 from flask import Flask, request, jsonify
 from dotenv import load_dotenv
 import os, requests, json, re, base64
@@ -24,45 +33,65 @@ def GetUrlToScan():
             json.dump({"url": UrlToCheck}, f, ensure_ascii=False, indent=4)
 
         print(jsonify({"url": UrlToCheck, "status": "valid"}))
-        VirusTotalResponse = ContactVirusTotalApi()
+        VirusTotalResponse = ContactVirusTotalApi(UrlToCheck)
 
         if VirusTotalResponse == None:
             return jsonify({"url": UrlToCheck, "error": "VirusTotal API error"}), 500
         
-        return jsonify({"url": UrlToCheck, "vt_result": VirusTotalResponse})
+        AnalysisReportURL = VirusTotalResponse["data"]["links"]["self"]
+        FullAnalysisData = GetAnalysisReport(AnalysisReportURL)
+
+        # We only take the keys we need
+        if FullAnalysisData and "data" in FullAnalysisData:
+            stats = FullAnalysisData["data"]["attributes"]["stats"]
+            response_data = {
+                "url": UrlToCheck,
+                "malicious_votes": stats.get("malicious", 0),
+                "harmless_votes": stats.get("harmless", 0)
+            }
+        else:
+            response_data = {
+                "url": UrlToCheck,
+                "error": "Impossible de récupérer les stats"
+            }
+
+        return jsonify(response_data)
+
     
     else:
         return jsonify({"error": "URL invalide"}), 400
     
 
-def ContactVirusTotalApi(UserUrl="https://google.com"):
+def ContactVirusTotalApi(UserUrl):
     VirusTotalApiUrl = "https://www.virustotal.com/api/v3/urls"
 
     headers = {
         "accept": "application/json",
-        "x-apikey": API_KEY
+        "x-apikey": API_KEY,
     }
 
-    # VirusTotal wants to get either a base64 encoding or SHA256 + cancanonicalization
-    # https://docs.virustotal.com/reference/url to know the right format
-    # Option chosen: base64
-
-    EncodedUrl = UserUrl.encode()
-    Base64Url = base64.urlsafe_b64encode(EncodedUrl).decode().strip("=")
-
     data = {"url": UserUrl}
-
     response = requests.post(VirusTotalApiUrl, headers=headers, data=data)
-
-    # AJOUT: afficher le JSON complet pour debug
-    print(response.json())
-
-    res_json = response.json()
 
     if response.status_code == 200 or response.status_code == 201:
         return response.json()
     else:
         print("Error")
+        return None
+    
+
+def GetAnalysisReport(AnalysisReportURL):
+    headers = {
+        "accept": "application/json",
+        "x-apikey": API_KEY,
+    }
+
+    response = requests.get(AnalysisReportURL, headers=headers)
+
+    if response.status_code == 200:
+        return response.json()
+    else:
+        print("Error, none analysis found")
         return None
 
 
