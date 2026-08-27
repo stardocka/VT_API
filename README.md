@@ -1,7 +1,3 @@
-AIRBUS - JR10353765 - Technical Challenge
-Intern Exercise: URL Analyzer
-Antoine Puteanus-Mautino
-
 Introduction:
 
 The primary objective of this project is to deploy an API that allows us to determine whether a link is malicious or not.
